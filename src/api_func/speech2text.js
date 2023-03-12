@@ -52,9 +52,7 @@ async function speech2text(req, res) {
         rec.free()
         ffmpeg_run.stdout.pipe(ffmpeg_run.stdin)
         ffmpeg_run.stdout.destroy()
-        
     })
-    ffmpeg_run.disconnect()
     } catch (e) {
         console.error(e)
     }
