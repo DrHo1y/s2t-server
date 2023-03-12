@@ -6,9 +6,10 @@ import { spawn } from 'child_process'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import path from 'path'
+import { memUsage } from './memUsage.js'
 
 const nspawn = util.promisify(spawn)
-
+memUsage('start')
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -23,17 +24,24 @@ async function speech2text(req, res) {
     if (data == "" || data == null) {
         return res.status(400).json({ msg: "Wrong data format!" })
     }
+
+    memUsage('write file')
+
     var filename = randomSting(8) + '.wav'
     filename = path.join(__dirname, '..','public', filename)
-    fs.writeFileSync(filename, Buffer.from(data, 'base64'))
+    fs.writeFileSync(filename, Buffer.from(data, 'base64')) //error
     if (!fs.existsSync(modelPath)) {
         console.log("Пожалуйста скачайте языковую модель по адресу: https://alphacephei.com/vosk/models")
         process.exit()
     }
 
+    memUsage('vosk setlogLevel')
+
     vosk.setLogLevel(-1)
     const model = new vosk.Model(modelPath)
     const rec = new vosk.Recognizer({model: model, sampleRate: sampleRate})
+
+    memUsage('before ffmpeg')
 
     const ffmpeg_run = spawn('ffmpeg', ['-loglevel', 'quiet', '-i', filename,
                          '-ar', String(sampleRate) , '-ac', '1',
@@ -44,7 +52,9 @@ async function speech2text(req, res) {
             result = rec.partialResult().partial
         }
     })
+    
     ffmpeg_run.on('close', () => {
+        memUsage('before send json')
         res.status(200).json({ msg: String(result) })
         console.log(result)
         fs.unlinkSync(filename)
@@ -52,7 +62,10 @@ async function speech2text(req, res) {
         rec.free()
         ffmpeg_run.stdout.pipe(ffmpeg_run.stdin)
         ffmpeg_run.stdout.destroy()
+        ffmpeg_run.unref()
+        memUsage('after free()')
     })
+    ffmpeg_run.unref()
     } catch (e) {
         console.error(e)
     }
@@ -69,5 +82,4 @@ const randomSting = length => {
     }
     return result
   }
-
 export { speech2text }
