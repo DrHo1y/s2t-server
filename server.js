@@ -1,7 +1,7 @@
 import https from 'https'
 import fs from 'fs'
 
-const host = '192.168.227.130'
+const host = '192.168.3.43'
 const port = 8000
 
 import app from './src/app.js'
@@ -10,8 +10,8 @@ import app from './src/app.js'
 try {
     https
     .createServer({
-        key: fs.readFileSync('cert/privateKey.pem'),
-        cert: fs.readFileSync('cert/certificate.pem'),
+        key: fs.readFileSync('cert/key.pem'),
+        cert: fs.readFileSync('cert/cert.pem'),
     },
     app)
     .listen(port, host, () => {

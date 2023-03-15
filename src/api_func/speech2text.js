@@ -6,17 +6,17 @@ import { spawn } from 'child_process'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import path from 'path'
-import { memUsage } from './memUsage.js'
+//import { memUsage } from './memUsage.js'
 
 const nspawn = util.promisify(spawn)
-memUsage('start')
+//memUsage('start')
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 const modelPath = 'vosk_models/ru'
 const sampleRate = 16000
-const bufferSize = 8000
+const bufferSize = 4096
 
 async function speech2text(req, res) {
     try {
@@ -25,7 +25,7 @@ async function speech2text(req, res) {
         return res.status(400).json({ msg: "Wrong data format!" })
     }
 
-    memUsage('write file')
+    //memUsage('write file')
 
     var filename = randomSting(8) + '.wav'
     filename = path.join(__dirname, '..','public', filename)
@@ -35,26 +35,24 @@ async function speech2text(req, res) {
         process.exit()
     }
 
-    memUsage('vosk setlogLevel')
+    //memUsage('vosk setlogLevel')
 
-    vosk.setLogLevel(-1)
+    vosk.setLogLevel(0)
     const model = new vosk.Model(modelPath)
     const rec = new vosk.Recognizer({model: model, sampleRate: sampleRate})
 
-    memUsage('before ffmpeg')
+    //memUsage('before ffmpeg')
 
     const ffmpeg_run = spawn('ffmpeg', ['-loglevel', 'quiet', '-i', filename,
                          '-ar', String(sampleRate) , '-ac', '1',
                          '-f', 's16le', '-bufsize', String(bufferSize), '-'])
     var result =''
     ffmpeg_run.stdout.on('data', (stdout) => {
-        if (!rec.acceptWaveform(stdout)) {
-            result = rec.partialResult().partial
-        }
+        rec.acceptWaveform(stdout)
+        result = result + rec.finalResult().text + ' '
     })
-    
     ffmpeg_run.on('close', () => {
-        memUsage('before send json')
+        //memUsage('before send json')
         res.status(200).json({ msg: String(result) })
         console.log(result)
         fs.unlinkSync(filename)
@@ -63,7 +61,7 @@ async function speech2text(req, res) {
         ffmpeg_run.stdout.pipe(ffmpeg_run.stdin)
         ffmpeg_run.stdout.destroy()
         ffmpeg_run.unref()
-        memUsage('after free()')
+        //memUsage('after free()')
     })
     ffmpeg_run.unref()
     } catch (e) {
