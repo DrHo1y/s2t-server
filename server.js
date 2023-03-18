@@ -14,7 +14,7 @@ try {
         cert: fs.readFileSync('cert/cert.pem'),
     },
     app)
-    .listen(port, host, () => {
+    .listen(port, () => {
         console.log(`recognizer server on https://${host}:${port}`)
     })
 } catch (e) {
